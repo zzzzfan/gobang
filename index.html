@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>五子棋</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(90deg, #e66465, #9198e5);
+      }
+      #info {
+        font-size: 1.8rem;
+        color: white;
+        font-weight: 550;
+        z-index: 111;
+        margin-top: -20px;
+        padding-bottom: 10px;
+      }
+      #root {
+        position: relative;
+        width: 500px;
+        background-color: white;
+        max-width: 90%;
+        border-radius: 5px;
+        display: flex;
+        flex-wrap: wrap;
+        overflow: hidden;
+      }
+      .square {
+        flex-grow: 1;
+        position: relative;
+        margin: 0;
+        box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.4) inset;
+      }
+      .circle {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+      }
+      .white {
+        background: #fff;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 3px #ccc, 0 2px 2px #eee inset;
+      }
+      .black {
+        background: #000;
+        border: 1px solid #000;
+        box-shadow: 0 1px 3px #eee, 1px 1px 2px rgb(99, 99, 99) inset;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">白子先行</div>
+    <div id="root"></div>
+    <script>
+      // 获得棋盘元素
+      let root = document.getElementById("root");
+      // 获得棋盘的宽度
+      let rwidth = parseInt(root.clientWidth);
+      // 设置棋盘格为15X15
+      let cell = 15;
+      // 定义棋盘格的宽度为棋盘的1/15
+      let swidth = parseInt(rwidth / cell) + "px";
+      // 定义棋子的宽度为棋盘格的5/6
+      let cwidth = parseInt(rwidth / cell / 1.2) + "px";
+      // 创建一个长度为15的数组
+      let arr = Array.from({ length: 15 });
+      // 棋盘的html，初始是空的
+      let html = "";
+      // 所有点击过的棋子数据
+      let shuju = [];
+      // 遍历数组生成棋盘格
+      arr.map((_, row) => {
+        arr.map((_, column) => {
+          let box = `<div class="square" style="width:${swidth};height:${swidth}">
+            <div class="circle" row="${row}" column="${column}" style="width:${cwidth};height:${cwidth}"></div>
+            </div>`;
+          html = html + box;
+        });
+      });
+      // 将棋盘格渲染到屏幕上
+      root.innerHTML += html;
+
+      // 初始棋子颜色
+      chessColor = "black";
+      // 给棋盘添加监听器，监听点击事件
+      root.addEventListener("click", (e) => {
+        // e是浏览器传入的参数，包括包含点击的位置等数据
+        // 被鼠标点击的标签
+        let target = e.target;
+        // 判断是否为棋子且没被点击过
+        if (
+          target.className.includes("circle") &&
+          target.classList.length == 1
+        ) {
+          // 检查棋子颜色，并在点击后交换颜色
+          if (chessColor === "white") {
+            chessColor = "black";
+            document.getElementById("info").innerHTML = "白子回合";
+          } else {
+            chessColor = "white";
+            document.getElementById("info").innerHTML = "黑子回合";
+          }
+          // 将颜色的class加入到棋子里
+          target.classList.add(chessColor);
+          // 获得该棋子的坐标信息
+          let row = parseInt(target.getAttribute("row"));
+          let column = parseInt(target.getAttribute("column"));
+          // 把棋子信息传入数据库
+          shuju.push({
+            column: column,
+            row: row,
+            chessColor: chessColor,
+          });
+          // 检查是否获胜,延迟1毫秒让棋子被渲染出来
+          setTimeout(() => {
+            jiancha(column, row, chessColor);
+          }, 1);
+        } else {
+          console.log("该格子已有棋子");
+        }
+      });
+      // 检查是否获胜，传入棋子的坐标(列，排)和颜色
+      // 通过检查棋子的各个方向同颜色棋子数量
+      function jiancha(column, row, chessColor) {
+        //创建4个方向|——/\
+        let axis = [
+          [0, 1],
+          [1, 0],
+          [1, 1],
+          [1, -1],
+        ];
+        // 循环axio数组，检查四个方向的棋子数量
+        axis.map((a) => {
+          // 该方向的正方向的棋子数量
+          let zhengfangxiang = 0;
+          // 该方向的反方向的棋子数量
+          let fanfangxiang = 0;
+          // 向正方向查找4次
+          for (let i = 1; i < 5; i++) {
+            let zhengcolumn = column + a[0] * i;
+            let zhengrow = row + a[1] * i;
+            // 检查棋盘数据里面是否有指定棋子
+            let phave = shuju.some((item) => {
+              return (
+                item.column === zhengcolumn &&
+                item.row === zhengrow &&
+                item.chessColor === chessColor
+              );
+            });
+            //如果有，正方向数量加1
+            if (phave) {
+              zhengfangxiang++;
+              //否则跳出循环，去查找下一方向
+            } else {
+              break;
+            }
+          }
+          // 向反方向查找4次
+          for (let i = 1; i < 5; i++) {
+            let zhengcolumn = column - a[0] * i;
+            let zhengrow = row - a[1] * i;
+            // 检查棋盘数据里面是否有指定棋子
+            let phave = shuju.some((item) => {
+              return (
+                item.column === zhengcolumn &&
+                item.row === zhengrow &&
+                item.chessColor === chessColor
+              );
+            });
+            //如果有，反方向数量加1
+            if (phave) {
+              fanfangxiang++;
+              //否则跳出循环，去查找下一方向
+            } else {
+              break;
+            }
+          }
+          if (zhengfangxiang + fanfangxiang >= 4) {
+            window.confirm(
+              (chessColor === "white" ? "白棋" : "黑棋") + "胜利!"
+            );
+            window.location.reload();
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
